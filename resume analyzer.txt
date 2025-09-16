@@ -1,0 +1,45 @@
+!pip install gradio google-generativeai --quiet
+
+import gradio as gr
+from google import genai
+
+# Initialize Gemini client
+client = genai.Client(api_key="AIzaSyDHFXW8-BB4dJ5y-igqspjdDUKonM-CSU0")
+
+# Function to process resume and text input
+def analyze_resume(file, platform_text):
+    if file is None:
+        return "⚠️ Please upload a PDF resume.", ""
+    
+    # Upload file to Gemini
+    my_file = client.files.upload(file=file.name)
+    
+    # Generate content
+    prompt = f"Rate this resume for ATS friendliness. Provide detailed suggestions to improve it for {platform_text}."
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=[my_file, prompt],
+    )
+    
+    return "✅ Resume Analyzed Successfully!", response.text
+
+
+# Build Gradio UI
+with gr.Blocks(css=".gradio-container {background: #f0f4ff;} .title {font-size: 24px; font-weight: bold; color: #2c3e50;} .subtitle {font-size: 16px; color: #34495e;}") as demo:
+    gr.Markdown("<div class='title'>📄 ATS Resume Analyzer</div>")
+    gr.Markdown("<div class='subtitle'>Upload your resume and get ATS-friendly rating & platform-based suggestions 🚀</div>")
+
+    with gr.Row():
+        with gr.Column(scale=1):
+            resume_file = gr.File(label="Upload Resume (PDF)", file_types=[".pdf"])
+            platform_text = gr.Textbox(label="Target Platform (e.g., LinkedIn, Naukri, Indeed)", placeholder="Enter platform name...")
+            analyze_btn = gr.Button("🔍 Analyze Resume", variant="primary")
+        
+        with gr.Column(scale=2):
+            status = gr.Label(label="Status")
+            suggestions = gr.Textbox(label="Suggestions & Rating", lines=15, interactive=False)
+
+    analyze_btn.click(fn=analyze_resume, inputs=[resume_file, platform_text], outputs=[status, suggestions])
+
+# Launch app
+demo.launch()
